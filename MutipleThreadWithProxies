@@ -1,0 +1,68 @@
+private void MutipleThreadWithProxies(object x)
+        {
+            ListProxiesSeperate.Clear();// List() your proxies;
+            ListUrlSeperate.Clear();// List() your urls;
+
+            int howMuchTask = 4;//How much tasks in run. You can config it in your setting manager;
+            int howMuchProxiesPerTask = 5;//How much proxy/ thread, also meaning delay 5s(+/-) after this proxy used. You can config it in your setting manager;
+
+            int maxUrlsCrawling = urls.Count;// How much urls for request;
+            int howMuchUrlsRemain = maxUrlsCrawling % howMuchTask;// Remain urls by tasks, maxUrls for request;
+            int maxUrlsPerTask = (howMuchUrlsRemain == 0) ? (maxUrlsCrawling / howMuchTask) : ((maxUrlsCrawling - howMuchUrlsRemain) / howMuchTask);
+
+            if (howMuchUrlsRemain != 0)
+            {
+                howMuchTask = howMuchTask + 1;
+            }
+
+            int delayCrawlingByProxies = howMuchTask * howMuchProxiesPerTask;//5 proxies per task;
+
+            if (delayCrawlingByProxies > proxies.Count)
+            {
+                MessageBox.Show("Need " + delayCrawlingByProxies + " proxies for run");
+                return;
+            }
+
+            ListUrlSeperate = splitList(urls, maxUrlsPerTask); //Split urls/ task;
+            ListProxiesSeperate = splitList(proxies, howMuchProxiesPerTask);// Split proxies/ task;
+
+            //Crawling....
+            for (int listIdx = 0; listIdx < ListUrlSeperate.Count; listIdx++)
+            {
+                var _thread = new ThreadSingle(ProcessingList, new PolyXGOMultipleInfor() { ListID = listIdx, ProxyListProxies = ListProxiesSeperate[listIdx], ListData = ListUrlSeperate[listIdx] });
+                _thread.Start();
+            }
+        }
+        private void ProcessingList(object _list)
+        {
+            int proxyRun = 0;
+            var polyMultiple = (PolyXGOMultipleInfor)_list;
+            var curListProcessing = polyMultiple.ListData;
+            var listProxies = polyMultiple.ProxyListProxies;
+            for (int iRun = 0; iRun < curListProcessing.Count; iRun++)
+            {
+                if (proxyRun > listProxies.Count - 1)
+                {
+                    proxyRun = 0;
+                }
+                
+                var curUrl = curListProcessing[iRun];
+
+                var curCrawl = listProxies[proxyRun].Replace("{{URL}}", curUrl);
+                
+                //Test write a file;
+                if (iRun == curListProcessing.Count-1)
+                {
+                    FileFolderHelper.FileHelper.WriteFile(curCrawl, @FileFolderHelper.Folder.ApplicationRoot + "/Log/" + polyMultiple.ListID + ".txt", true);
+                }
+                //Test alert when complete;
+                if (curUrl == urls[urls.Count - 1])
+                {
+                    DataTimeEnd = DateTime.Now;
+                    txtRest.AppendText("End " + DataTimeEnd + " = "+ (DataTimeEnd-DataTimeStart) + " \r\n");
+                    txtRest.AppendText("Last url in " + polyMultiple.ListID);
+                    MessageBox.Show("Complete!", "Alert");
+                }
+                proxyRun++;
+            }
+        }
